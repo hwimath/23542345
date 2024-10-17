@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>정수 및 유리수 곱셈 나눗셈 퀴즈 게임</title>
+    <!-- MathJax 라이브러리 로드 -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f8ff;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        #start-screen, #game-screen, #end-screen {
+            display: none;
+            padding: 20px;
+        }
+        #start-screen.visible, #game-screen.visible, #end-screen.visible {
+            display: block;
+        }
+        h1 {
+            color: #2e8b57;
+            margin-bottom: 10px;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .button {
+            padding: 15px 25px;
+            font-size: 18px;
+            margin: 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background-color: #20b2aa;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #3cb371;
+        }
+        #stats {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        #message {
+            font-size: 22px;
+            color: #dc143c;
+            margin-top: 20px;
+            min-height: 30px;
+        }
+        .question-container {
+            margin: 20px 0;
+            text-align: left;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .question {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .options {
+            list-style-type: none;
+            padding: 0;
+        }
+        .options li {
+            margin: 10px 0;
+        }
+        .option-button {
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            border: 2px solid #20b2aa;
+            border-radius: 8px;
+            background-color: white;
+            transition: background-color 0.3s, color 0.3s;
+            width: 100%;
+            text-align: left;
+        }
+        .option-button:hover {
+            background-color: #20b2aa;
+            color: white;
+        }
+        .option-button.correct {
+            background-color: #32cd32;
+            color: white;
+            border-color: #32cd32;
+        }
+        .option-button.incorrect {
+            background-color: #ff6347;
+            color: white;
+            border-color: #ff6347;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 시작 화면 -->
+    <div id="start-screen" class="visible">
+        <h1>정수 및 유리수 곱셈 나눗셈 퀴즈 게임</h1>
+        <h2>난이도를 선택하세요</h2>
+        <button class="button" onclick="startGame('highest')">최상</button>
+        <button class="button" onclick="startGame('high')">상</button>
+        <button class="button" onclick="startGame('medium')">중</button>
+        <button class="button" onclick="startGame('low')">하</button>
+    </div>
+
+    <!-- 게임 화면 -->
+    <div id="game-screen">
+        <h1>정수 및 유리수 곱셈 나눗셈 퀴즈 게임</h1>
+        <div id="question-container">
+            <!-- 현재 문제가 여기 표시됩니다 -->
+        </div>
+        <div id="message"></div>
+        <div id="stats">
+            <p>점수: <span id="score">0</span></p>
+            <p>남은 시간: <span id="timer">0</span>초</p>
+            <p>남은 기회: <span id="lives">3</span></p>
+            <p>진행 상황: <span id="progress">1</span> / 54</p>
+        </div>
+    </div>
+
+    <!-- 종료 화면 -->
+    <div id="end-screen">
+        <h1>게임 종료!</h1>
+        <p>최종 점수: <span id="final-score">0</span></p>
+        <button class="button" onclick="restartGame()">다시 시작</button>
+    </div>
+
+    <script>
+        window.onload = function() {
+            // 난이도별 설정
+            const difficultySettings = {
+                'highest': { timePerQuestion: 20, points: 20 },
+                'high': { timePerQuestion: 30, points: 15 },
+                'medium': { timePerQuestion: 40, points: 10 },
+                'low': { timePerQuestion: null, points: 5 } // '하' 난이도는 시간 제한 없음
+            };
+            let difficulty;
+            let timeLimit;
+            let score = 0;
+            let currentQuestionIndex = 0;
+            let shuffledQuestions = [];
+            let timerInterval;
+            let remainingTime;
+            let lives = 3;
+
+            // 문제 및 정답 데이터
+            const problems = [
+                // 1. 정수 곱하기 정수 (부호 혼합)
+                {
+                    question: "\\((+1) \\times (-2)\\)",
+                    options: ["-2", "2", "-1", "1"],
+                    correctAnswer: "-2",
+                    type: "integer"
+                },
+                {
+                    question: "\\((-3) \\times (+4)\\)",
+                    options: ["-12", "12", "-7", "7"],
+                    correctAnswer: "-12",
+                    type: "integer"
+                },
+                {
+                    question: "\\((-5) \\times (-6)\\)",
+                    options: ["30", "-30", "11", "-11"],
+                    correctAnswer: "30",
+                    type: "integer"
+                },
+                {
+                    question: "\\((+7) \\times (+8)\\)",
+                    options: ["56", "-56", "15", "-15"],
+                    correctAnswer: "56",
+                    type: "integer"
+                },
+                {
+                    question: "\\((-9) \\times (+2)\\)",
+                    options: ["-18", "18", "-7", "7"],
+                    correctAnswer: "-18",
+                    type: "integer"
+                },
+                {
+                    question: "\\((+10) \\times (-3)\\)",
+                    options: ["-30", "30", "-13", "13"],
+                    correctAnswer: "-30",
+                    type: "integer"
+                },
+                // 2. 분수 곱하기 분수 (부호 혼합)
+                {
+                    question: "\\(\\left(+\\dfrac{2}{5}\\right) \\times \\left(+\\dfrac{15}{4}\\right)\\)",
+                    options: ["\\(\\dfrac{3}{2}\\)", "\\(-\\dfrac{3}{2}\\)", "\\(\\dfrac{17}{20}\\)", "\\(-\\dfrac{17}{20}\\)"],
+                    correctAnswer: "\\(\\dfrac{3}{2}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(-\\dfrac{7}{8}\\right) \\times \\left(+\\dfrac{4}{5}\\right)\\)",
+                    options: ["\\(-\\dfrac{7}{10}\\)", "\\(\\dfrac{7}{10}\\)", "\\(-\\dfrac{28}{40}\\)", "\\(\\dfrac{28}{40}\\)"],
+                    correctAnswer: "\\(-\\dfrac{7}{10}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(-\\dfrac{3}{4}\\right) \\times \\left(-\\dfrac{2}{9}\\right)\\)",
+                    options: ["\\(\\dfrac{1}{6}\\)", "\\(-\\dfrac{1}{6}\\)", "\\(\\dfrac{5}{6}\\)", "\\(-\\dfrac{5}{6}\\)"],
+                    correctAnswer: "\\(\\dfrac{1}{6}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(+\\dfrac{5}{6}\\right) \\times \\left(-\\dfrac{3}{7}\\right)\\)",
+                    options: ["\\(-\\dfrac{5}{14}\\)", "\\(\\dfrac{5}{14}\\)", "\\(-\\dfrac{15}{42}\\)", "\\(\\dfrac{15}{42}\\)"],
+                    correctAnswer: "\\(-\\dfrac{5}{14}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(-\\dfrac{9}{10}\\right) \\times \\left(-\\dfrac{5}{12}\\right)\\)",
+                    options: ["\\(\\dfrac{3}{8}\\)", "\\(-\\dfrac{3}{8}\\)", "\\(\\dfrac{14}{22}\\)", "\\(-\\dfrac{14}{22}\\)"],
+                    correctAnswer: "\\(\\dfrac{3}{8}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(+\\dfrac{8}{9}\\right) \\times \\left(+\\dfrac{3}{4}\\right)\\)",
+                    options: ["\\(\\dfrac{2}{3}\\)", "\\(-\\dfrac{2}{3}\\)", "\\(\\dfrac{24}{36}\\)", "\\(-\\dfrac{24}{36}\\)"],
+                    correctAnswer: "\\(\\dfrac{2}{3}\\)",
+                    type: "fraction"
+                },
+                // 3. 소수 곱하기 정수 (부호 혼합)
+                {
+                    question: "\\((+0.7) \\times (-5)\\)",
+                    options: ["-3.5", "3.5", "-4.5", "4.5"],
+                    correctAnswer: "-3.5",
+                    type: "decimal"
+                },
+                {
+                    question: "\\((-1.2) \\times (+6)\\)",
+                    options: ["-7.2", "7.2", "-5.2", "5.2"],
+                    correctAnswer: "-7.2",
+                    type: "decimal"
+                },
+                {
+                    question: "\\((+2.5) \\times (+4)\\)",
+                    options: ["10", "-10", "6", "-6"],
+                    correctAnswer: "10",
+                    type: "decimal"
+                },
+                {
+                    question: "\\((-3.3) \\times (-3)\\)",
+                    options: ["9.9", "-9.9", "6.9", "-6.9"],
+                    correctAnswer: "9.9",
+                    type: "decimal"
+                },
+                {
+                    question: "\\((+1.8) \\times (-7)\\)",
+                    options: ["-12.6", "12.6", "-8.6", "8.6"],
+                    correctAnswer: "-12.6",
+                    type: "decimal"
+                },
+                {
+                    question: "\\((-2.4) \\times (+5)\\)",
+                    options: ["-12", "12", "-7", "7"],
+                    correctAnswer: "-12",
+                    type: "decimal"
+                },
+                // 4. 분수 곱하기 소수 (부호 혼합)
+                {
+                    question: "\\(\\left(-\\dfrac{2}{9}\\right) \\times \\left(-0.3\\right)\\)",
+                    options: ["\\(\\dfrac{2}{15}\\)", "\\(-\\dfrac{2}{15}\\)", "\\(\\dfrac{4}{15}\\)", "\\(-\\dfrac{4}{15}\\)"],
+                    correctAnswer: "\\(\\dfrac{2}{15}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(+\\dfrac{5}{8}\\right) \\times \\left(-0.4\\right)\\)",
+                    options: ["\\(-\\dfrac{1}{4}\\)", "\\(\\dfrac{1}{4}\\)", "\\(-\\dfrac{5}{32}\\)", "\\(\\dfrac{5}{32}\\)"],
+                    correctAnswer: "\\(-\\dfrac{1}{4}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(-\\dfrac{7}{5}\\right) \\times \\left(-0.2\\right)\\)",
+                    options: ["\\(\\dfrac{7}{25}\\)", "\\(-\\dfrac{7}{25}\\)", "\\(\\dfrac{14}{25}\\)", "\\(-\\dfrac{14}{25}\\)"],
+                    correctAnswer: "\\(\\dfrac{7}{25}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(+\\dfrac{3}{4}\\right) \\times \\left(+0.6\\right)\\)",
+                    options: ["\\(\\dfrac{9}{10}\\)", "\\(-\\dfrac{9}{10}\\)", "\\(\\dfrac{3}{10}\\)", "\\(-\\dfrac{3}{10}\\)"],
+                    correctAnswer: "\\(\\dfrac{9}{10}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(-\\dfrac{1}{2}\\right) \\times \\left(+0.8\\right)\\)",
+                    options: ["\\(-\\dfrac{2}{5}\\)", "\\(\\dfrac{2}{5}\\)", "\\(-\\dfrac{4}{5}\\)", "\\(\\dfrac{4}{5}\\)"],
+                    correctAnswer: "\\(-\\dfrac{2}{5}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(+\\dfrac{9}{10}\\right) \\times \\left(-0.5\\right)\\)",
+                    options: ["\\(-\\dfrac{9}{20}\\)", "\\(\\dfrac{9}{20}\\)", "\\(-\\dfrac{18}{20}\\)", "\\(\\dfrac{18}{20}\\)"],
+                    correctAnswer: "\\(-\\dfrac{9}{20}\\)",
+                    type: "fraction"
+                },
+                // 5. 정수 나누기 정수 (나누어 떨어짐, 부호 혼합)
+                {
+                    question: "\\((-49) \\div (-7)\\)",
+                    options: ["7", "-7", "42", "-42"],
+                    correctAnswer: "7",
+                    type: "integer"
+                },
+                {
+                    question: "\\((+36) \\div (-6)\\)",
+                    options: ["-6", "6", "-30", "30"],
+                    correctAnswer: "-6",
+                    type: "integer"
+                },
+                {
+                    question: "\\((-24) \\div (+8)\\)",
+                    options: ["-3", "3", "-32", "32"],
+                    correctAnswer: "-3",
+                    type: "integer"
+                },
+                {
+                    question: "\\((+81) \\div (+9)\\)",
+                    options: ["9", "-9", "72", "-72"],
+                    correctAnswer: "9",
+                    type: "integer"
+                },
+                {
+                    question: "\\((-64) \\div (-8)\\)",
+                    options: ["8", "-8", "56", "-56"],
+                    correctAnswer: "8",
+                    type: "integer"
+                },
+                {
+                    question: "\\((+45) \\div (-5)\\)",
+                    options: ["-9", "9", "-50", "50"],
+                    correctAnswer: "-9",
+                    type: "integer"
+                },
+                // 6. 소수 나누기 소수 (답이 정수, 부호 혼합)
+                {
+                    question: "\\((-3.6) \\div (+0.9)\\)",
+                    options: ["-4", "4", "-3", "3"],
+                    correctAnswer: "-4",
+                    type: "integer"
+                },
+                {
+                    question: "\\((+7.5) \\div (-2.5)\\)",
+                    options: ["-3", "3", "-5", "5"],
+                    correctAnswer: "-3",
+                    type: "integer"
+                },
+                {
+                    question: "\\((-6.3) \\div (-0.7)\\)",
+                    options: ["9", "-9", "8", "-8"],
+                    correctAnswer: "9",
+                    type: "integer"
+                },
+                {
+                    question: "\\((+12.6) \\div (+1.8)\\)",
+                    options: ["7", "-7", "9", "-9"],
+                    correctAnswer: "7",
+                    type: "integer"
+                },
+                {
+                    question: "\\((-8.4) \\div (+1.2)\\)",
+                    options: ["-7", "7", "-9", "9"],
+                    correctAnswer: "-7",
+                    type: "integer"
+                },
+                {
+                    question: "\\((+9.6) \\div (-1.6)\\)",
+                    options: ["-6", "6", "-8", "8"],
+                    correctAnswer: "-6",
+                    type: "integer"
+                },
+                // 7. 분수 나누기 분수 (부호 혼합)
+                {
+                    question: "\\(\\left(-\\dfrac{3}{5}\\right) \\div \\left(-\\dfrac{3}{20}\\right)\\)",
+                    options: ["4", "-4", "\\(\\dfrac{9}{25}\\)", "\\(-\\dfrac{9}{25}\\)"],
+                    correctAnswer: "4",
+                    type: "integer"
+                },
+                {
+                    question: "\\(\\left(+\\dfrac{7}{8}\\right) \\div \\left(-\\dfrac{7}{16}\\right)\\)",
+                    options: ["-2", "2", "-\\(\\dfrac{1}{2}\\)", "\\(\\dfrac{1}{2}\\)"],
+                    correctAnswer: "-2",
+                    type: "integer"
+                },
+                {
+                    question: "\\(\\left(-\\dfrac{5}{6}\\right) \\div \\left(+\\dfrac{5}{12}\\right)\\)",
+                    options: ["-2", "2", "-\\(\\dfrac{1}{2}\\)", "\\(\\dfrac{1}{2}\\)"],
+                    correctAnswer: "-2",
+                    type: "integer"
+                },
+                {
+                    question: "\\(\\left(+\\dfrac{9}{10}\\right) \\div \\left(-\\dfrac{9}{5}\\right)\\)",
+                    options: ["-\\(\\dfrac{1}{2}\\)", "\\(\\dfrac{1}{2}\\)", "-2", "2"],
+                    correctAnswer: "-\\(\\dfrac{1}{2}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(-\\dfrac{4}{9}\\right) \\div \\left(-\\dfrac{2}{3}\\right)\\)",
+                    options: ["\\(\\dfrac{2}{3}\\)", "-\\(\\dfrac{2}{3}\\)", "\\(\\dfrac{6}{7}\\)", "-\\(\\dfrac{6}{7}\\)"],
+                    correctAnswer: "\\(\\dfrac{2}{3}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(+\\dfrac{5}{12}\\right) \\div \\left(-\\dfrac{5}{3}\\right)\\)",
+                    options: ["-\\(\\dfrac{1}{4}\\)", "\\(\\dfrac{1}{4}\\)", "-\\(\\dfrac{5}{9}\\)", "\\(\\dfrac{5}{9}\\)"],
+                    correctAnswer: "-\\(\\dfrac{1}{4}\\)",
+                    type: "fraction"
+                },
+                // 8. 곱셈과 나눗셈이 섞인 정수 계산 (부호 혼합)
+                {
+                    question: "\\((-6) \\times (+7) \\div (-2)\\)",
+                    options: ["21", "-21", "42", "-42"],
+                    correctAnswer: "21",
+                    type: "integer"
+                },
+                {
+                    question: "\\((+8) \\times (-5) \\div (+10)\\)",
+                    options: ["-4", "4", "-40", "40"],
+                    correctAnswer: "-4",
+                    type: "integer"
+                },
+                {
+                    question: "\\((-9) \\times (-4) \\div (-6)\\)",
+                    options: ["6", "-6", "60", "-60"],
+                    correctAnswer: "-6",
+                    type: "integer"
+                },
+                {
+                    question: "\\((+12) \\times (+3) \\div (-9)\\)",
+                    options: ["-4", "4", "-3", "3"],
+                    correctAnswer: "-4",
+                    type: "integer"
+                },
+                {
+                    question: "\\((-15) \\times (+2) \\div (+5)\\)",
+                    options: ["-6", "6", "-30", "30"],
+                    correctAnswer: "-6",
+                    type: "integer"
+                },
+                {
+                    question: "\\((+14) \\times (-7) \\div (-14)\\)",
+                    options: ["7", "-7", "14", "-14"],
+                    correctAnswer: "7",
+                    type: "integer"
+                },
+                // 9. 곱셈과 나눗셈이 섞인 분수 계산
+                {
+                    question: "\\(\\left(-\\dfrac{9}{16}\\right) \\div \\left(-\\dfrac{2}{5}\\right) \\times \\left(-\\dfrac{3}{8}\\right)\\)",
+                    options: ["-\\(\\dfrac{135}{256}\\)", "\\(\\dfrac{135}{256}\\)", "-\\(\\dfrac{27}{128}\\)", "\\(\\dfrac{27}{128}\\)"],
+                    correctAnswer: "-\\(\\dfrac{135}{256}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(+\\dfrac{5}{6}\\right) \\div \\left(-\\dfrac{5}{12}\\right) \\times \\left(+\\dfrac{2}{3}\\right)\\)",
+                    options: ["-\\(\\dfrac{4}{3}\\)", "\\(\\dfrac{4}{3}\\)", "-\\(\\dfrac{5}{9}\\)", "\\(\\dfrac{5}{9}\\)"],
+                    correctAnswer: "-\\(\\dfrac{4}{3}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(-\\dfrac{7}{8}\\right) \\div \\left(+\\dfrac{7}{16}\\right) \\times \\left(-\\dfrac{1}{2}\\right)\\)",
+                    options: ["\\(\\dfrac{1}{4}\\)", "-\\(\\dfrac{1}{4}\\)", "\\(\\dfrac{7}{16}\\)", "-\\(\\dfrac{7}{16}\\)"],
+                    correctAnswer: "\\(\\dfrac{1}{4}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(+\\dfrac{3}{5}\\right) \\div \\left(-\\dfrac{9}{10}\\right) \\times \\left(-\\dfrac{2}{3}\\right)\\)",
+                    options: ["\\(\\dfrac{4}{9}\\)", "-\\(\\dfrac{4}{9}\\)", "\\(\\dfrac{6}{25}\\)", "-\\(\\dfrac{6}{25}\\)"],
+                    correctAnswer: "\\(\\dfrac{4}{9}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(-\\dfrac{2}{7}\\right) \\div \\left(-\\dfrac{4}{21}\\right) \\times \\left(+\\dfrac{3}{5}\\right)\\)",
+                    options: ["\\(\\dfrac{9}{10}\\)", "-\\(\\dfrac{9}{10}\\)", "\\(\\dfrac{6}{35}\\)", "-\\(\\dfrac{6}{35}\\)"],
+                    correctAnswer: "\\(\\dfrac{9}{10}\\)",
+                    type: "fraction"
+                },
+                {
+                    question: "\\(\\left(+\\dfrac{4}{9}\\right) \\div \\left(-\\dfrac{2}{3}\\right) \\times \\left(-\\dfrac{3}{8}\\right)\\)",
+                    options: ["\\(\\dfrac{1}{2}\\)", "-\\(\\dfrac{1}{2}\\)", "\\(\\dfrac{1}{6}\\)", "-\\(\\dfrac{1}{6}\\)"],
+                    correctAnswer: "\\(\\dfrac{1}{2}\\)",
+                    type: "fraction"
+                }
+            ];
+
+            // 게임 시작 함수
+            window.startGame = function(selectedDifficulty) {
+                difficulty = selectedDifficulty;
+                timeLimit = difficultySettings[difficulty].timePerQuestion;
+                document.getElementById('start-screen').classList.remove('visible');
+                document.getElementById('game-screen').classList.add('visible');
+                score = 0;
+                lives = 3;
+                currentQuestionIndex = 0;
+                shuffledQuestions = shuffleArray([...problems]); // 문제 목록 섞기
+                updateStats();
+                renderQuestion();
+            }
+
+            // 배열 섞기 함수
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    let j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+
+            // 현재 문제 렌더링 함수
+            function renderQuestion() {
+                if (currentQuestionIndex >= shuffledQuestions.length || lives <= 0) {
+                    endGame();
+                    return;
+                }
+                const container = document.getElementById('question-container');
+                container.innerHTML = '';
+                const currentQuestion = shuffledQuestions[currentQuestionIndex];
+
+                // 옵션을 랜덤하게 섞기
+                let options = shuffleArray([...currentQuestion.options]);
+                // 정답 인덱스 찾기
+                let correctAnswerIndex = options.indexOf(currentQuestion.correctAnswer);
+
+                // 현재 질문의 정답 인덱스를 저장
+                currentQuestion.answerIndex = correctAnswerIndex;
+
+                const div = document.createElement('div');
+                div.className = 'question-container';
+                div.innerHTML = `
+                    <div class="question">${currentQuestion.question}</div>
+                    <ul class="options">
+                        ${options.map((option, index) => `<li><button class="option-button" data-option-index="${index}">${option}</button></li>`).join('')}
+                    </ul>
+                `;
+                container.appendChild(div);
+                // 옵션 버튼에 이벤트 리스너 추가
+                const optionButtons = document.querySelectorAll('.option-button');
+                optionButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const selectedOptionIndex = parseInt(this.getAttribute('data-option-index'));
+                        checkAnswer(selectedOptionIndex);
+                    });
+                });
+                MathJax.typesetPromise();
+                document.getElementById('message').innerHTML = '';
+
+                // 타이머 설정
+                if (timeLimit !== null) {
+                    remainingTime = timeLimit;
+                    document.getElementById('timer').innerText = remainingTime;
+                    clearInterval(timerInterval);
+                    timerInterval = setInterval(() => {
+                        remainingTime--;
+                        document.getElementById('timer').innerText = remainingTime;
+                        if (remainingTime <= 0) {
+                            clearInterval(timerInterval);
+                            checkAnswer(-1); // 시간 초과 시 오답 처리
+                        }
+                    }, 1000);
+                } else {
+                    document.getElementById('timer').innerText = '무제한';
+                }
+            }
+
+            // 답안 확인 함수
+            window.checkAnswer = function(selectedOptionIndex) {
+                clearInterval(timerInterval);
+                const currentQuestion = shuffledQuestions[currentQuestionIndex];
+                let isCorrect = false;
+                let correctAnswerIndex = currentQuestion.answerIndex;
+
+                if (selectedOptionIndex === correctAnswerIndex) {
+                    isCorrect = true;
+                    score += difficultySettings[difficulty].points;
+                    document.getElementById('message').innerHTML = '정답입니다! 🎉';
+                } else {
+                    lives--;
+                    document.getElementById('message').innerHTML = `틀렸습니다! 정답은 <strong>${currentQuestion.correctAnswer}</strong>입니다. 😢`;
+                    if (lives <= 0) {
+                        endGame();
+                        return;
+                    }
+                }
+
+                updateStats();
+                highlightOptions(selectedOptionIndex, correctAnswerIndex);
+                disableOptions();
+
+                // 다음 문제로 이동
+                setTimeout(() => {
+                    currentQuestionIndex++;
+                    renderQuestion();
+                }, 2000);
+            }
+
+            // 옵션 강조 표시 함수
+            function highlightOptions(selectedOptionIndex, correctAnswerIndex) {
+                const buttons = document.querySelectorAll('.option-button');
+                buttons.forEach((button, index) => {
+                    if (index === correctAnswerIndex) {
+                        button.classList.add('correct');
+                    }
+                    if (index === selectedOptionIndex && selectedOptionIndex !== correctAnswerIndex) {
+                        button.classList.add('incorrect');
+                    }
+                });
+            }
+
+            // 옵션 비활성화 함수
+            function disableOptions() {
+                const buttons = document.querySelectorAll('.option-button');
+                buttons.forEach(button => {
+                    button.disabled = true;
+                });
+            }
+
+            // 통계 업데이트 함수
+            function updateStats() {
+                document.getElementById('score').innerText = score;
+                document.getElementById('progress').innerText = currentQuestionIndex + 1;
+                document.getElementById('lives').innerText = lives;
+            }
+
+            // 게임 종료 함수
+            function endGame() {
+                clearInterval(timerInterval);
+                document.getElementById('game-screen').classList.remove('visible');
+                document.getElementById('end-screen').classList.add('visible');
+                document.getElementById('final-score').innerText = score;
+            }
+
+            // 게임 재시작 함수
+            window.restartGame = function() {
+                document.getElementById('end-screen').classList.remove('visible');
+                document.getElementById('start-screen').classList.add('visible');
+            }
+        };
+    </script>
+
+</body>
+</html>
